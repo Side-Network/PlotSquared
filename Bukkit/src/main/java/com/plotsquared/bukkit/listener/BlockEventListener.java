@@ -770,62 +770,6 @@ public class BlockEventListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBlockPistonExtend(BlockPistonExtendEvent event) {
-        Block block = event.getBlock();
-        Location location = BukkitUtil.adapt(block.getLocation());
-        BlockFace face = event.getDirection();
-        Vector relative = new Vector(face.getModX(), face.getModY(), face.getModZ());
-        PlotArea area = location.getPlotArea();
-        if (area == null) {
-            if (!this.plotAreaManager.hasPlotArea(location.getWorldName())) {
-                return;
-            }
-            for (Block block1 : event.getBlocks()) {
-                Location bloc = BukkitUtil.adapt(block1.getLocation());
-                if (bloc.isPlotArea() || bloc
-                        .add(relative.getBlockX(), relative.getBlockY(), relative.getBlockZ())
-                        .isPlotArea()) {
-                    event.setCancelled(true);
-                    return;
-                }
-            }
-            if (location.add(relative.getBlockX(), relative.getBlockY(), relative.getBlockZ()).isPlotArea()) {
-                // Prevent pistons from extending if they are: bordering a plot
-                // area, facing inside plot area, and not pushing any blocks
-                event.setCancelled(true);
-            }
-            return;
-        }
-        Plot plot = area.getOwnedPlot(location);
-        if (plot == null) {
-            event.setCancelled(true);
-            return;
-        }
-        for (Block block1 : event.getBlocks()) {
-            Location bloc = BukkitUtil.adapt(block1.getLocation());
-            Location newLoc = bloc.add(relative.getBlockX(), relative.getBlockY(), relative.getBlockZ());
-            if (!area.contains(bloc.getX(), bloc.getZ()) || !area.contains(newLoc)) {
-                event.setCancelled(true);
-                return;
-            }
-            if (!plot.equals(area.getOwnedPlot(bloc)) || !plot.equals(area.getOwnedPlot(newLoc))) {
-                event.setCancelled(true);
-                return;
-            }
-            if (!area.buildRangeContainsY(bloc.getY()) || !area.buildRangeContainsY(newLoc.getY())) {
-                event.setCancelled(true);
-                return;
-            }
-        }
-        if (!plot.equals(area.getOwnedPlot(location.add(relative.getBlockX(), relative.getBlockY(), relative.getBlockZ())))) {
-            // This branch is only necessary to prevent pistons from extending
-            // if they are: on a plot edge, facing outside the plot, and not
-            // pushing any blocks
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPistonRetract(BlockPistonRetractEvent event) {
         Block block = event.getBlock();
         Location location = BukkitUtil.adapt(block.getLocation());
@@ -865,36 +809,6 @@ public class BlockEventListener implements Listener {
             if (!area.buildRangeContainsY(bloc.getY()) || !area.buildRangeContainsY(newLoc.getY())) {
                 event.setCancelled(true);
                 return;
-            }
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBlockDispense(BlockDispenseEvent event) {
-        if (!this.plotAreaManager.hasPlotArea(event.getBlock().getWorld().getName())) {
-            return;
-        }
-        Material type = event.getItem().getType();
-        switch (type.toString()) {
-            case "SHULKER_BOX", "WHITE_SHULKER_BOX", "ORANGE_SHULKER_BOX", "MAGENTA_SHULKER_BOX", "LIGHT_BLUE_SHULKER_BOX",
-                    "YELLOW_SHULKER_BOX", "LIME_SHULKER_BOX", "PINK_SHULKER_BOX", "GRAY_SHULKER_BOX", "LIGHT_GRAY_SHULKER_BOX",
-                    "CYAN_SHULKER_BOX", "PURPLE_SHULKER_BOX", "BLUE_SHULKER_BOX", "BROWN_SHULKER_BOX", "GREEN_SHULKER_BOX",
-                    "RED_SHULKER_BOX", "BLACK_SHULKER_BOX", "CARVED_PUMPKIN", "WITHER_SKELETON_SKULL", "FLINT_AND_STEEL",
-                    "BONE_MEAL", "SHEARS", "GLASS_BOTTLE", "GLOWSTONE", "COD_BUCKET", "PUFFERFISH_BUCKET", "SALMON_BUCKET",
-                    "TROPICAL_FISH_BUCKET", "AXOLOTL_BUCKET", "BUCKET", "WATER_BUCKET", "LAVA_BUCKET", "TADPOLE_BUCKET" -> {
-                if (event.getBlock().getType() == Material.DROPPER) {
-                    return;
-                }
-                BlockFace targetFace = ((Dispenser) event.getBlock().getBlockData()).getFacing();
-                Location location = BukkitUtil.adapt(event.getBlock().getRelative(targetFace).getLocation());
-                if (location.isPlotRoad()) {
-                    event.setCancelled(true);
-                    return;
-                }
-                PlotArea area = location.getPlotArea();
-                if (area != null && !area.buildRangeContainsY(location.getY())) {
-                    event.setCancelled(true);
-                }
             }
         }
     }
@@ -958,36 +872,6 @@ public class BlockEventListener implements Listener {
                 event.getBlocks().remove(i);
             }
         }
-    }
-
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onBigBoom(BlockExplodeEvent event) {
-        Block block = event.getBlock();
-        Location location = BukkitUtil.adapt(block.getLocation());
-        String world = location.getWorldName();
-        if (!this.plotAreaManager.hasPlotArea(world)) {
-            return;
-        }
-        PlotArea area = location.getPlotArea();
-        if (area == null) {
-            Iterator<Block> iterator = event.blockList().iterator();
-            while (iterator.hasNext()) {
-                location = BukkitUtil.adapt(iterator.next().getLocation());
-                if (location.isPlotArea()) {
-                    iterator.remove();
-                }
-            }
-            return;
-        }
-        Plot plot = area.getOwnedPlot(location);
-        if (plot == null || !plot.getFlag(ExplosionFlag.class)) {
-            event.setCancelled(true);
-            if (plot != null) {
-                plot.debug("Explosion was cancelled because explosion = false");
-            }
-            return;
-        }
-        event.blockList().removeIf(blox -> !plot.equals(area.getOwnedPlot(BukkitUtil.adapt(blox.getLocation()))));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
